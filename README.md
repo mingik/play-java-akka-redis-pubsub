@@ -1,9 +1,11 @@
 About
 =====
 
-This is play-java-akka-redis-pubsub application utilizing Play framework, Akka and Redis pubsub feature.
+This is webapplication utilizing Play framework, Akka and Redis pubsub feature.
+
 It creates RedisPublisherActor that listens for GET requests to /publish endpoint and publishes passed
 messages to configured Redis channel.
+
 It also creates RedisSubscriberActor that listens for GET requests to /display endpoint and displays
 all messages that were received from the same configured Redis channel.
 
@@ -12,11 +14,11 @@ all messages that were received from the same configured Redis channel.
 Usage
 =====
 
-1. Install and run Redis
+1. Install and run Redis (redis-servier).
 2. add Redis host, port, database, timeout and channel configurations into conf/application.conf
 3. run ./bin/activator
 4. Open the browser and navigate to http://localhost:9000/publish?message=world
-5. run "PUBLISH [channel name from configuration] hello" through redis-cli (in another terminal)
+5. run "PUBLISH [channel name from conf/application.conf] hello" through redis-cli (in another terminal)
 6. Open the browser and navigate to http://localhost:9000/display
 
 You should see "Messages seen so far: hello:world" message on the page. 
