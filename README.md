@@ -35,6 +35,9 @@ There are several demonstration files available in this template.
 
 Controllers
 ===========
+- RedisController.java:
+
+  Shows how to publish to and display subscribed messages from Redis channel with simple HTTP requests.
 
 - HomeController.java:
 
@@ -75,3 +78,23 @@ Filters
 - ExampleFilter.java
 
   A simple filter that adds a header to every response.
+  
+Actors
+======
+
+- RedisPublisherActor.java:
+
+  Akka Actor that publishes passed messages to Redis channel.
+  
+- RedisSubscriberActor.java:
+
+  Akka Actor that receives messages from RedisListener and stores them internally. It also replies with all messages 
+  received so far. 
+  
+Services
+========
+
+- RedisListener.java:
+  Subscriber to Redis channel. It forwards published messages received from Redis channel to RedisSubscriberActor.
+  
+
