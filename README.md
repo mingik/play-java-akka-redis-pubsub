@@ -17,9 +17,9 @@ Usage
 1. Install and run Redis (redis-servier).
 2. add Redis host, port, database, timeout and channel configurations into conf/application.conf
 3. run ./bin/activator
-4. Open the browser and navigate to http://localhost:9000/publish?message=world
-5. run "PUBLISH [channel name from conf/application.conf] hello" through redis-cli (in another terminal)
-6. Open the browser and navigate to http://localhost:9000/display
+4. Open the browser and navigate to [http://localhost:9000/publish?message=hello](http://localhost:9000/publish?message=hello)
+5. run "PUBLISH [channel name from conf/application.conf] world" through redis-cli (in another terminal)
+6. Open the browser and navigate to [http://localhost:9000/display](http://localhost:9000/display)
 
 You should see "Messages seen so far: hello:world" message on the page. 
 
