@@ -5,20 +5,42 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import messages.RedisActorProtocol;
 import org.apache.commons.lang3.StringUtils;
+import play.Configuration;
+import services.RedisListener;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Created by mintik on 4/19/16.
  */
 public class RedisSubscriberActor extends UntypedActor {
 
+    private final ExecutorService exec;
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     final private List<String> receivedMessages = new ArrayList<>();
+    private RedisListener redisListener;
+    private Configuration configuration;
+
+    public RedisSubscriberActor(Configuration configuration, ExecutorService exec) {
+        this.configuration = configuration;
+        this.exec = exec;
+        initListener();
+    }
+
+    @Override
+    public void preStart() throws Exception {
+        super.preStart();
+    }
+
+    private void initListener() {
+        redisListener = new RedisListener(configuration);
+        redisListener.setSubscriberActor(self(), exec);
+    }
 
     @Override
     public void onReceive(Object message) throws Exception {

@@ -3,11 +3,20 @@ About
 
 This is webapplication utilizing Play framework, Akka and Redis pubsub feature.
 
-It creates RedisPublisherActor that listens for GET requests to /publish endpoint and publishes passed
-messages to configured Redis channel.
+It creates 10 RedisPublisherActor instances and on each GET request to /publish endpoint 
+it asks RedisPublisherActor instance chosen via round robin to reply to the message,
+containing 'message' URL parameter value. This RedisPublisherActor instance receives the 
+message, publishes it to Redis channel (configured in application.conf) and replies with 
+'acknowledge' message.
 
-It also creates RedisSubscriberActor that listens for GET requests to /display endpoint and displays
-all messages that were received from the same configured Redis channel.
+It also creates 10 RedisSubscriberActor instances and on each GET request to /display 
+endpoint it asks RedisSubscriberActor instance chosen via round robin to reply to 'display' 
+message. This RedisSubscriberActor instance also contains RedisListener that: 
+1) subscribes to the same Redis channel (configured in application.conf) 
+2) redirects each message published by Redis channel into RedisSubscriberActor's 
+internal storage.
+So when RedisSubscriberActor instance receives the 'display' message, it returns
+all messages from that storage that represents all messages that were published by Redis channel.
 
 =========================================================================================================
 
@@ -88,13 +97,14 @@ Actors
   
 - RedisSubscriberActor.java:
 
-  Akka Actor that receives messages from RedisListener and stores them internally. It also replies with all messages 
-  received so far. 
+  Akka Actor that receives messages from its own RedisListener and stores them internally. 
+  It also replies with all messages received so far. 
   
 Services
 ========
 
 - RedisListener.java:
-  Subscriber to Redis channel. It forwards published messages received from Redis channel to RedisSubscriberActor.
+  Subscriber to Redis channel. It forwards published messages received from Redis channel to RedisSubscriberActor that 
+  has .
   
 

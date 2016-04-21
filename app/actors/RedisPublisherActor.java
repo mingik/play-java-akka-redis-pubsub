@@ -25,7 +25,9 @@ public class RedisPublisherActor extends UntypedActor {
     }
 
     private void initializeFields() {
-        jedisPool = new JedisPool(new GenericObjectPoolConfig(), configuration.getString("redis.host"), configuration.getInt("redis.port"), configuration.getInt("redis.timeout"), null, configuration.getInt("redis.database"));
+        jedisPool = new JedisPool(new GenericObjectPoolConfig(), configuration.getString("redis.host"),
+                configuration.getInt("redis.port"), configuration.getInt("redis.timeout"), null,
+                configuration.getInt("redis.database"));
         jedis = jedisPool.getResource();
     }
 

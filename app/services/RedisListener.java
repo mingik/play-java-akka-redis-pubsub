@@ -12,18 +12,17 @@ import redis.clients.jedis.JedisPubSub;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Created by mintik on 4/20/16.
  */
-@Singleton
 public class RedisListener extends JedisPubSub {
     private ActorRef subscriberActor = ActorRef.noSender();
     private JedisPool jedisPool;
     private Jedis jedis;
     private Configuration configuration;
 
-    @Inject
     public RedisListener(Configuration configuration) {
         this.configuration = configuration;
         initFields();
@@ -34,9 +33,13 @@ public class RedisListener extends JedisPubSub {
         jedis = jedisPool.getResource();
     }
 
-    public void setSubscriberActor(ActorRef subscriberActor) {
+    public void setSubscriberActor(ActorRef subscriberActor, ExecutorService exec) {
         this.subscriberActor = subscriberActor;
-        CompletableFuture.runAsync(() -> jedis.subscribe(this, configuration.getString("redis.channel")));
+        /**
+         * Start listening for the messages from channel on separate thread pool
+         */
+        CompletableFuture.runAsync(() -> jedis.subscribe(this, configuration.getString("redis.channel")),
+                exec);
     }
 
     @Override
