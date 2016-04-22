@@ -15,11 +15,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
 /**
+ * This class is a Redis subscriber that also holds an ActorRef.
+ * Each message received from Redis channel will be forwarded to
+ * the corresponding Actor.
+ *
  * Created by mintik on 4/20/16.
  */
 public class RedisListener extends JedisPubSub {
     private ActorRef subscriberActor = ActorRef.noSender();
-    private JedisPool jedisPool;
     private Jedis jedis;
     private Configuration configuration;
 
@@ -29,8 +32,7 @@ public class RedisListener extends JedisPubSub {
     }
 
     private void initFields() {
-        jedisPool = new JedisPool(new GenericObjectPoolConfig(), configuration.getString("redis.host"), configuration.getInt("redis.port"), configuration.getInt("redis.timeout"), null, configuration.getInt("redis.database"));
-        jedis = jedisPool.getResource();
+        jedis = new Jedis(configuration.getString("redis.host"));
     }
 
     public void setSubscriberActor(ActorRef subscriberActor, ExecutorService exec) {
@@ -38,19 +40,23 @@ public class RedisListener extends JedisPubSub {
         /**
          * Start listening for the messages from channel on separate thread pool
          */
-        CompletableFuture.runAsync(() -> jedis.subscribe(this, configuration.getString("redis.channel")),
+        CompletableFuture.runAsync(() -> {
+                    jedis.subscribe(this, configuration.getString("redis.channel"));
+                    jedis.quit();
+                },
                 exec);
     }
 
     @Override
     public void onMessage(String channel, String message) {
         Logger.info("RedisListener onMessage: channel = {}, message = {}", channel, message);
-        subscriberActor.tell(new RedisActorProtocol.SubscribedMessage(message), ActorRef.noSender());
+        subscriberActor.tell(new RedisActorProtocol.SubscribedMessage(message, channel), ActorRef.noSender());
     }
 
     @Override
     public void onPMessage(String pattern, String channel, String message) {
         Logger.info("RedisListener onPMessage: pattern = {}, channel = {}, message = {}", pattern, channel, message);
+        subscriberActor.tell(new RedisActorProtocol.SubscribedMessage(message, channel, pattern), ActorRef.noSender());
     }
 
     @Override

@@ -10,8 +10,15 @@ public class RedisActorProtocol {
 
     public static class SubscribedMessage {
         public final String subscribedMessage;
-        public SubscribedMessage(String subscribedMessage) {
+        public final String channel;
+        public final String pattern;
+        public SubscribedMessage(String subscribedMessage, String channel, String pattern) {
             this.subscribedMessage = subscribedMessage;
+            this.channel = channel;
+            this.pattern = pattern;
+        }
+        public SubscribedMessage(String subscribedMessage, String channel) {
+            this(subscribedMessage, channel, "");
         }
     }
 

@@ -10,7 +10,11 @@ import play.Configuration;
 import play.Logger;
 import play.mvc.Controller;
 import play.mvc.Result;
+import redis.clients.jedis.JedisPool;
 import scala.compat.java8.FutureConverters;
+import scala.concurrent.ExecutionContextExecutor;
+import scala.concurrent.duration.Duration;
+import services.Counter;
 
 import static akka.pattern.Patterns.ask;
 
@@ -18,9 +22,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.stream.IntStream;
 
 /**
@@ -29,17 +31,24 @@ import java.util.stream.IntStream;
 @Singleton
 public class RedisController extends Controller {
     private final ExecutorService executorService;
+    private final ExecutionContextExecutor exec;
+    private final Counter counter;
     private ActorSystem actorSystem;
     private Configuration configuration;
     private List<ActorRef> publisherActors;
     private List<ActorRef> subscriberActors;
     private int publisherActorCounter;
     private int subscriberActorCounter;
+    private JedisPool jedisPool;
 
     @Inject
-    public RedisController(ActorSystem actorSystem, Configuration configuration) {
+    public RedisController(ActorSystem actorSystem, Configuration configuration, JedisPool jedisPool,
+                           ExecutionContextExecutor exec, Counter counter) {
         this.actorSystem = actorSystem;
         this.configuration = configuration;
+        this.jedisPool = jedisPool;
+        this.exec = exec;
+        this.counter = counter;
         /**
          * Separate thread pool for RedisSubscriberActors listeners
          */
@@ -55,7 +64,8 @@ public class RedisController extends Controller {
                             executorService),
                     "RedisSubscriberActor-" + value);
             subscriberActors.add(subscriberActor);
-            ActorRef publisherActor = actorSystem.actorOf(Props.create(RedisPublisherActor.class, configuration),
+            ActorRef publisherActor = actorSystem.actorOf(Props.create(RedisPublisherActor.class, configuration,
+                    jedisPool),
                     "RedisPublisherActor-" + value);
             publisherActors.add(publisherActor);
         });
@@ -75,17 +85,32 @@ public class RedisController extends Controller {
         final ActorRef subscriberActor = getSubscriberActor();
         Logger.info("Calling RedisSubscriberActor {} with message {}", subscriberActor, RedisActorProtocol.DisplayMessages.INSTANCE);
         return FutureConverters.toJava(ask(subscriberActor, RedisActorProtocol.DisplayMessages.INSTANCE, 10000))
-                .thenApply(response -> {
-                    return ok(response.toString());
-                });
+                .thenApply(response -> ok(response.toString()));
     }
 
     public CompletionStage<Result> publishMessage(String message) {
         final ActorRef publisherActor = getPublisherActor();
         Logger.info("Calling RedisPublisherActor {} with message {}", publisherActor, message);
         return FutureConverters.toJava(ask(publisherActor, new RedisActorProtocol.PublishMessage(message), 10000))
-                .thenApply(response -> {
-                    return ok(response.toString());
-                });
+                .thenApply(response -> ok(response.toString()));
+    }
+
+    public Result publishCounter() {
+        return ok(dispatchCounter(10, TimeUnit.SECONDS));
+    }
+
+    private String dispatchCounter(long interval, TimeUnit timeUnit) {
+        /**
+         * Make Akka scheduler to call publishMessage with counter-generated messages
+         * every 10 seconds.
+         */
+        actorSystem.scheduler().schedule(
+                Duration.create(0, timeUnit),
+                Duration.create(interval, timeUnit),
+                (Runnable) () -> getPublisherActor().tell(
+                        new RedisActorProtocol.PublishMessage("count" + counter.nextCount()), ActorRef.noSender()),
+                exec
+        );
+        return "started 10 seconds counter";
     }
 }

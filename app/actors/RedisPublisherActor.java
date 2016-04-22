@@ -19,16 +19,9 @@ public class RedisPublisherActor extends UntypedActor {
     private Jedis jedis;
     private Configuration configuration;
 
-    public RedisPublisherActor(Configuration configuration) {
+    public RedisPublisherActor(Configuration configuration, JedisPool jedisPool) {
         this.configuration = configuration;
-        initializeFields();
-    }
-
-    private void initializeFields() {
-        jedisPool = new JedisPool(new GenericObjectPoolConfig(), configuration.getString("redis.host"),
-                configuration.getInt("redis.port"), configuration.getInt("redis.timeout"), null,
-                configuration.getInt("redis.database"));
-        jedis = jedisPool.getResource();
+        this.jedisPool = jedisPool;
     }
 
     @Override
@@ -37,7 +30,9 @@ public class RedisPublisherActor extends UntypedActor {
 
         if (message instanceof RedisActorProtocol.PublishMessage) {
             String publishMessage = ((RedisActorProtocol.PublishMessage) message).publishMessage;
+            jedis = jedisPool.getResource();
             jedis.publish(configuration.getString("redis.channel"), publishMessage);
+            jedisPool.returnResource(jedis);
             sender().tell(RedisActorProtocol.PublishAcknowledged.INSTANCE, self());
         }
     }

@@ -6,6 +6,7 @@ import akka.event.LoggingAdapter;
 import messages.RedisActorProtocol;
 import org.apache.commons.lang3.StringUtils;
 import play.Configuration;
+import redis.clients.jedis.JedisPool;
 import services.RedisListener;
 
 import java.util.ArrayList;
@@ -39,6 +40,11 @@ public class RedisSubscriberActor extends UntypedActor {
 
     private void initListener() {
         redisListener = new RedisListener(configuration);
+        /**
+         * This will start the listener on another thread.
+         * The listener will forward messages received from Redis to
+         * this actor instance.
+         */
         redisListener.setSubscriberActor(self(), exec);
     }
 
