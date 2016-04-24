@@ -1,22 +1,20 @@
 About
 =====
 
-This is webapplication utilizing Play framework, Akka and Redis pubsub feature.
+This webapplication uses Play framework, Akka and Redis pubsub feature.
 
 It creates 10 RedisPublisherActor instances and on each GET request to /publish endpoint 
-it asks RedisPublisherActor instance chosen via round robin to reply to the message,
-containing 'message' URL parameter value. This RedisPublisherActor instance receives the 
-message, publishes it to Redis channel (configured in application.conf) and replies with 
-'acknowledge' message.
+it asks RedisPublisherActor instance chosen via round robin to publish the value of 'message'
+URL parameter to Redis channel (configured in application.conf).
 
 It also creates 10 RedisSubscriberActor instances and on each GET request to /display 
-endpoint it asks RedisSubscriberActor instance chosen via round robin to reply to 'display' 
-message. This RedisSubscriberActor instance also contains RedisListener that: 
-1) subscribes to the same Redis channel (configured in application.conf) 
-2) redirects each message published by Redis channel into RedisSubscriberActor's 
-internal storage.
-So when RedisSubscriberActor instance receives the 'display' message, it returns
-all messages from that storage that represents all messages that were published by Redis channel.
+endpoint it asks RedisSubscriberActor instance chosen via round robin to display all messages 
+published to Redis channel so far.
+
+Branch 'master' contains implementation where each instance of RedisSubscriberActor contains 
+RedisListener instance internally, whereas branch 'onesubscriber' contains implementation where 
+there is only one RedisListener that forwards each message received from Redis channel to all 
+RedisSubscriberActor instances.
 
 =========================================================================================================
 
@@ -34,6 +32,9 @@ You should see "Messages seen so far: hello:world" message on the page.
 
 To sum up, two messages were published into channel (one through RedisPublisherActor, another through Redis directly) 
 and the same messages were consumed by RedisSubscriberActor and displayed on the webpage.
+
+You can also navigate to [http://localhost:9000/counter] and then to [http://localhost:9000/display] and start refreshing 
+the page every 10 seconds. You should see messages "count0", "count1", "count2" appear on the page after every 10 sec refresh.
 
 Details
 =======
@@ -107,4 +108,10 @@ Services
   Subscriber to Redis channel. It forwards published messages received from Redis channel to RedisSubscriberActor that 
   has .
   
+Tests
+=====
 
+- ApplicationTest.java:
+  Contains unrelated tests for HomeController.java
+- IntegrationTest.java:
+  Contains integration test for RedisController.java that launches the application and tests endpoints. Make sure you have local Redis instance running for this test to succeed.
