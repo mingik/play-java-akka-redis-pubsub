@@ -1,22 +1,13 @@
 About
 =====
 
-This is webapplication utilizing Play framework, Akka and Redis pubsub feature.
+This webapplication uses Play framework, Akka and Redis pubsub feature.
 
-It creates 10 RedisPublisherActor instances and on each GET request to /publish endpoint 
-it asks RedisPublisherActor instance chosen via round robin to reply to the message,
-containing 'message' URL parameter value. This RedisPublisherActor instance receives the 
-message, publishes it to Redis channel (configured in application.conf) and replies with 
-'acknowledge' message.
+It creates 10 RedisPublisherActor instances and on each GET request to /publish endpoint it asks RedisPublisherActor instance chosen via round robin to publish the value of 'message' URL parameter to Redis channel (configured in application.conf).
 
-It also creates 10 RedisSubscriberActor instances and on each GET request to /display 
-endpoint it asks RedisSubscriberActor instance chosen via round robin to reply to 'display' 
-message. This RedisSubscriberActor instance also contains RedisListener that: 
-1) subscribes to the same Redis channel (configured in application.conf) 
-2) redirects each message published by Redis channel into RedisSubscriberActor's 
-internal storage.
-So when RedisSubscriberActor instance receives the 'display' message, it returns
-all messages from that storage that represents all messages that were published by Redis channel.
+It also creates 10 RedisSubscriberActor instances and on each GET request to /display endpoint it asks RedisSubscriberActor instance chosen via round robin to display all messages published to Redis channel so far.
+
+Branch 'master' contains implementation where each instance of RedisSubscriberActor contains RedisListener instance internally, whereas branch 'onesubscriber' contains implementation where there is only one RedisListener that forwards each message received from Redis channel to all RedisSubscriberActor instances.
 
 =========================================================================================================
 
