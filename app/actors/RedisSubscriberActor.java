@@ -21,31 +21,30 @@ import java.util.concurrent.ExecutorService;
  */
 public class RedisSubscriberActor extends UntypedActor {
 
-    private final ExecutorService exec;
+    private final RedisListener redisListener;
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     final private List<String> receivedMessages = new ArrayList<>();
-    private RedisListener redisListener;
-    private Configuration configuration;
 
-    public RedisSubscriberActor(Configuration configuration, ExecutorService exec) {
-        this.configuration = configuration;
-        this.exec = exec;
-        initListener();
+    public RedisSubscriberActor(RedisListener redisListener) {
+        this.redisListener = redisListener;
     }
 
     @Override
     public void preStart() throws Exception {
+        /**
+         * Add itself to RedisListener
+         */
+        redisListener.addSubscriberActor(self().path(), self());
         super.preStart();
     }
 
-    private void initListener() {
-        redisListener = new RedisListener(configuration);
+    @Override
+    public void postStop() throws Exception {
         /**
-         * This will start the listener on another thread.
-         * The listener will forward messages received from Redis to
-         * this actor instance.
+         * Remove itself from RedisListener
          */
-        redisListener.setSubscriberActor(self(), exec);
+        redisListener.removeSubscriberActor(self().path());
+        super.postStop();
     }
 
     @Override

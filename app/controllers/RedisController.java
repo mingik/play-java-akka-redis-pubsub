@@ -15,6 +15,7 @@ import scala.compat.java8.FutureConverters;
 import scala.concurrent.ExecutionContextExecutor;
 import scala.concurrent.duration.Duration;
 import services.Counter;
+import services.RedisListener;
 
 import static akka.pattern.Patterns.ask;
 
@@ -40,28 +41,34 @@ public class RedisController extends Controller {
     private int publisherActorCounter;
     private int subscriberActorCounter;
     private JedisPool jedisPool;
+    private RedisListener redisListener;
 
     @Inject
     public RedisController(ActorSystem actorSystem, Configuration configuration, JedisPool jedisPool,
-                           ExecutionContextExecutor exec, Counter counter) {
+                           ExecutionContextExecutor exec, Counter counter, RedisListener redisListener) {
         this.actorSystem = actorSystem;
         this.configuration = configuration;
         this.jedisPool = jedisPool;
         this.exec = exec;
         this.counter = counter;
+        this.redisListener = redisListener;
         /**
          * Separate thread pool for RedisSubscriberActors listeners
          */
-        executorService = Executors.newFixedThreadPool(10);
+        executorService = Executors.newFixedThreadPool(1);
         initializeActors();
+        startRedisListener();
+    }
+
+    private void startRedisListener() {
+        redisListener.startListening(executorService);
     }
 
     private void initializeActors() {
         publisherActors = new ArrayList<>();
         subscriberActors = new ArrayList<>();
         IntStream.range(0, 10).forEach(value -> {
-            ActorRef subscriberActor = actorSystem.actorOf(Props.create(RedisSubscriberActor.class, configuration,
-                            executorService),
+            ActorRef subscriberActor = actorSystem.actorOf(Props.create(RedisSubscriberActor.class, redisListener),
                     "RedisSubscriberActor-" + value);
             subscriberActors.add(subscriberActor);
             ActorRef publisherActor = actorSystem.actorOf(Props.create(RedisPublisherActor.class, configuration,
