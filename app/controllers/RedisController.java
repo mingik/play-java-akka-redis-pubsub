@@ -58,7 +58,7 @@ public class RedisController extends Controller {
     private void initializeActors() {
         publisherActors = new ArrayList<>();
         subscriberActors = new ArrayList<>();
-        IntStream.range(0, 10).forEach(value -> {
+        IntStream.range(0, 1000).forEach(value -> {
             ActorRef subscriberActor = actorSystem.actorOf(Props.create(RedisSubscriberActor.class, configuration, redisClient),
                     "RedisSubscriberActor-" + value);
             subscriberActors.add(subscriberActor);
