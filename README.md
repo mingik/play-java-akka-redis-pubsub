@@ -11,10 +11,18 @@ It also creates 10 RedisSubscriberActor instances and on each GET request to /di
 endpoint it asks RedisSubscriberActor instance chosen via round robin to display all messages 
 published to Redis channel so far.
 
-Branch 'master' contains implementation where each instance of RedisSubscriberActor contains 
-RedisListener instance internally, whereas branch 'onesubscriber' contains implementation where 
-there is only one RedisListener that forwards each message received from Redis channel to all 
-RedisSubscriberActor instances.
+Branch 'master' contains implementation where each instance of RedisSubscriberActor holds  
+RedisListener (i.e. Redis subscriber) instance internally (note that it blocks additional 
+thread due to the fact that Jedis uses blocking IO), whereas branch 'onesubscriber' contains 
+implementation where there is only one RedisListener that forwards each message received from 
+Redis channel to all RedisSubscriberActor instances created. So branch 'onesubscriber' is 
+more scalable whereas branch 'master' is designed to be used only with limited number of 
+RedisSubscriberActors (in particlular 10 actor instances are being created). 
+Branch 'lettuce' contains implementation that uses Lettuce java library (instead of Jedis). 
+Because Lettuce uses Netty (nonblocking IO) underneath, RedisListener instance doesn't block 
+additional thread, so we can make each RedisSubscriberActor to hold RedisListener instance 
+internally and avoid limitation on number of RedisSubscriberActor created (1000 actor instances 
+are created on this branch).
 
 =========================================================================================================
 
