@@ -3,25 +3,25 @@ package actors;
 import akka.actor.UntypedActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import com.lambdaworks.redis.RedisClient;
+import com.lambdaworks.redis.pubsub.StatefulRedisPubSubConnection;
 import messages.RedisActorProtocol;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import play.Configuration;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
+import play.Logger;
 
 /**
  * Created by mintik on 4/19/16.
  */
 public class RedisPublisherActor extends UntypedActor {
 
+    private final RedisClient redisClient;
+    private StatefulRedisPubSubConnection<String, String> connection;
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-    private JedisPool jedisPool;
-    private Jedis jedis;
     private Configuration configuration;
 
-    public RedisPublisherActor(Configuration configuration, JedisPool jedisPool) {
+    public RedisPublisherActor(Configuration configuration, RedisClient redisClient) {
         this.configuration = configuration;
-        this.jedisPool = jedisPool;
+        this.redisClient = redisClient;
     }
 
     @Override
@@ -30,10 +30,20 @@ public class RedisPublisherActor extends UntypedActor {
 
         if (message instanceof RedisActorProtocol.PublishMessage) {
             String publishMessage = ((RedisActorProtocol.PublishMessage) message).publishMessage;
-            jedis = jedisPool.getResource();
-            jedis.publish(configuration.getString("redis.channel"), publishMessage);
-            jedisPool.returnResource(jedis);
+            connection.sync().publish(configuration.getString("redis.channel"), publishMessage);
             sender().tell(RedisActorProtocol.PublishAcknowledged.INSTANCE, self());
         }
+    }
+
+    @Override
+    public void preStart() throws Exception {
+        Logger.info("RedisPublisherActor {} preStart(): Connecting as publisher to Redis", self());
+        connection = redisClient.connectPubSub();
+    }
+
+    @Override
+    public void postStop() throws Exception {
+        Logger.info("RedisPublisherActor {} postStop(): Closing connection to Redis", self());
+        connection.close();
     }
 }

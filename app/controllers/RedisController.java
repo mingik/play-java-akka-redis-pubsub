@@ -5,67 +5,64 @@ import actors.RedisSubscriberActor;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
+import com.lambdaworks.redis.RedisClient;
 import messages.RedisActorProtocol;
 import play.Configuration;
 import play.Logger;
 import play.mvc.Controller;
 import play.mvc.Result;
-import redis.clients.jedis.JedisPool;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.ExecutionContextExecutor;
 import scala.concurrent.duration.Duration;
 import services.Counter;
 
-import static akka.pattern.Patterns.ask;
-
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
+
+import static akka.pattern.Patterns.ask;
 
 /**
  * Created by mintik on 4/19/16.
  */
 @Singleton
 public class RedisController extends Controller {
-    private final ExecutorService executorService;
-    private final ExecutionContextExecutor exec;
     private final Counter counter;
+    private final ExecutionContextExecutor exec;
+    private RedisClient redisClient;
     private ActorSystem actorSystem;
     private Configuration configuration;
     private List<ActorRef> publisherActors;
     private List<ActorRef> subscriberActors;
     private int publisherActorCounter;
     private int subscriberActorCounter;
-    private JedisPool jedisPool;
 
     @Inject
-    public RedisController(ActorSystem actorSystem, Configuration configuration, JedisPool jedisPool,
-                           ExecutionContextExecutor exec, Counter counter) {
+    public RedisController(ActorSystem actorSystem, Configuration configuration, Counter counter, ExecutionContextExecutor exec) {
         this.actorSystem = actorSystem;
         this.configuration = configuration;
-        this.jedisPool = jedisPool;
-        this.exec = exec;
         this.counter = counter;
-        /**
-         * Separate thread pool for RedisSubscriberActors listeners
-         */
-        executorService = Executors.newFixedThreadPool(10);
+        this.exec = exec;
+        initializeRedisClient();
         initializeActors();
+    }
+
+    private void initializeRedisClient() {
+        redisClient = RedisClient.create(configuration.getString("redis.url"));
     }
 
     private void initializeActors() {
         publisherActors = new ArrayList<>();
         subscriberActors = new ArrayList<>();
         IntStream.range(0, 10).forEach(value -> {
-            ActorRef subscriberActor = actorSystem.actorOf(Props.create(RedisSubscriberActor.class, configuration,
-                            executorService),
+            ActorRef subscriberActor = actorSystem.actorOf(Props.create(RedisSubscriberActor.class, configuration, redisClient),
                     "RedisSubscriberActor-" + value);
             subscriberActors.add(subscriberActor);
-            ActorRef publisherActor = actorSystem.actorOf(Props.create(RedisPublisherActor.class, configuration,
-                    jedisPool),
+            ActorRef publisherActor = actorSystem.actorOf(Props.create(RedisPublisherActor.class, configuration, redisClient),
                     "RedisPublisherActor-" + value);
             publisherActors.add(publisherActor);
         });
