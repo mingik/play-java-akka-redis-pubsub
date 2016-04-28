@@ -3,19 +3,13 @@ About
 
 This webapplication uses Play framework, Akka and Redis pubsub feature.
 
-RedisController creates 10 RedisPublisherActor instances and on each GET request to /publish endpoint 
-it asks RedisPublisherActor instance chosen via round robin to publish the value of 'message'
-URL parameter to Redis channel (configured in application.conf).
-
-It also creates 10 RedisSubscriberActor instances and on each GET request to /display 
-endpoint it asks RedisSubscriberActor instance chosen via round robin to display all messages 
-published to Redis channel so far.
+RedisController creates RedisSupervisorActor instance (that in turn creates 10 RedisPublisherActors and 10 RedisSubscriberActors) and on each GET request to /publish endpoint it asks RedisSupervisorActor to publish the value of 'message' URL parameter to Redis channel (configured in application.conf). RedisSupervisorActor delegates this request to RedisPublisherActor instance chosen via round robin (it uses RoundRobin logic in Akka router). Also on each GET request to /display endpoint it asks RedisSupervisorActor to display all messages published to Redis channel so far. RedisSupervisorActor delegates this request to RedisSubscriberActor instance (round robin is used here as well).
 
 Branch 'master' contains implementation where each instance of RedisSubscriberActor holds  
 RedisListener (i.e. Redis subscriber) instance internally (note that it blocks additional 
 thread due to the fact that Jedis uses blocking IO), whereas branch 'onesubscriber' contains 
-implementation where there is only one RedisListener that forwards each message received from 
-Redis channel to all RedisSubscriberActor instances created. So branch 'onesubscriber' is 
+implementation where there is only one RedisListener instance that forwards each message received 
+from Redis channel to all RedisSubscriberActor instances created. So branch 'onesubscriber' is 
 more scalable whereas branch 'master' is designed to be used only with limited number of 
 RedisSubscriberActors (in particlular, 10 actor instances are being created). 
 
