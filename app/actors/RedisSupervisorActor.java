@@ -24,7 +24,7 @@ public class RedisSupervisorActor extends UntypedActor {
     private final RedisClient redisClient;
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     private final Configuration configuration;
-    private final int NUMBER_OF_ACTORS = 50;
+    private final int NUMBER_OF_ACTORS = 500;
     private Router publisherRouter;
     private Router subscriberRouter;
 
