@@ -3,7 +3,7 @@ About
 
 This webapplication uses Play framework, Akka and Redis pubsub feature.
 
-It creates 10 RedisPublisherActor instances and on each GET request to /publish endpoint 
+RedisController creates 10 RedisPublisherActor instances and on each GET request to /publish endpoint 
 it asks RedisPublisherActor instance chosen via round robin to publish the value of 'message'
 URL parameter to Redis channel (configured in application.conf).
 
@@ -17,12 +17,13 @@ thread due to the fact that Jedis uses blocking IO), whereas branch 'onesubscrib
 implementation where there is only one RedisListener that forwards each message received from 
 Redis channel to all RedisSubscriberActor instances created. So branch 'onesubscriber' is 
 more scalable whereas branch 'master' is designed to be used only with limited number of 
-RedisSubscriberActors (in particlular 10 actor instances are being created). 
+RedisSubscriberActors (in particlular, 10 actor instances are being created). 
+
 Branch 'lettuce' contains implementation that uses Lettuce java library (instead of Jedis). 
 Because Lettuce uses Netty (nonblocking IO) underneath, RedisListener instance doesn't block 
 additional thread, so we can make each RedisSubscriberActor to hold RedisListener instance 
-internally and avoid limitation on number of RedisSubscriberActor created (1000 actor instances 
-are created on this branch).
+internally and avoid limitation on number of RedisSubscriberActor created (500 actor instances 
+are created on this branch, but it can be modifier to whatever number you want).
 
 =========================================================================================================
 
@@ -99,6 +100,9 @@ Filters
   
 Actors
 ======
+- RedisSupervisorActor.java:
+  
+  Akka Actor that supervises RedisPublisherActor and RedisSubscriberActor instances via Akka router (see [http://doc.akka.io/docs/akka/2.4.4/java/routing.html](Akka Documentation).
 
 - RedisPublisherActor.java:
 
@@ -113,8 +117,7 @@ Services
 ========
 
 - RedisListener.java:
-  Subscriber to Redis channel. It forwards published messages received from Redis channel to RedisSubscriberActor that 
-  has .
+  Subscriber to Redis channel. It forwards published messages received from Redis channel to one RedisSubscriberActor (in branch 'master') or to all RedisSubscriberActor instances (in branch 'onesubscriber).
   
 Tests
 =====
