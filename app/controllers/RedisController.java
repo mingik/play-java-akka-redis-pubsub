@@ -2,6 +2,7 @@ package controllers;
 
 import actors.RedisPublisherActor;
 import actors.RedisSubscriberActor;
+import actors.RedisSupervisorActor;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
@@ -36,11 +37,8 @@ public class RedisController extends Controller {
     private final Counter counter;
     private ActorSystem actorSystem;
     private Configuration configuration;
-    private List<ActorRef> publisherActors;
-    private List<ActorRef> subscriberActors;
-    private int publisherActorCounter;
-    private int subscriberActorCounter;
     private JedisPool jedisPool;
+    private ActorRef redisSupervisorActor;
     private RedisListener redisListener;
 
     @Inject
@@ -52,53 +50,24 @@ public class RedisController extends Controller {
         this.exec = exec;
         this.counter = counter;
         this.redisListener = redisListener;
-        /**
-         * Separate thread pool for RedisSubscriberActors listeners
-         */
-        executorService = Executors.newFixedThreadPool(1);
-        initializeActors();
-        startRedisListener();
+        this.executorService = Executors.newFixedThreadPool(1);
+        initializeRedisSupervisorActor();
     }
 
-    private void startRedisListener() {
+    private void initializeRedisSupervisorActor() {
         redisListener.startListening(executorService);
-    }
-
-    private void initializeActors() {
-        publisherActors = new ArrayList<>();
-        subscriberActors = new ArrayList<>();
-        IntStream.range(0, 10).forEach(value -> {
-            ActorRef subscriberActor = actorSystem.actorOf(Props.create(RedisSubscriberActor.class, redisListener),
-                    "RedisSubscriberActor-" + value);
-            subscriberActors.add(subscriberActor);
-            ActorRef publisherActor = actorSystem.actorOf(Props.create(RedisPublisherActor.class, configuration,
-                    jedisPool),
-                    "RedisPublisherActor-" + value);
-            publisherActors.add(publisherActor);
-        });
-        publisherActorCounter = 0;
-        subscriberActorCounter = 0;
-    }
-
-    private ActorRef getPublisherActor() {
-        return publisherActors.get(publisherActorCounter++ % publisherActors.size());
-    }
-
-    private ActorRef getSubscriberActor() {
-        return subscriberActors.get(subscriberActorCounter++ % subscriberActors.size());
+        redisSupervisorActor = actorSystem.actorOf(Props.create(RedisSupervisorActor.class, configuration, jedisPool, redisListener));
     }
 
     public CompletionStage<Result> displayMessages() {
-        final ActorRef subscriberActor = getSubscriberActor();
-        Logger.info("Calling RedisSubscriberActor {} with message {}", subscriberActor, RedisActorProtocol.DisplayMessages.INSTANCE);
-        return FutureConverters.toJava(ask(subscriberActor, RedisActorProtocol.DisplayMessages.INSTANCE, 10000))
+        Logger.info("Calling RedisSupervisorActor {} with message {}", redisSupervisorActor, RedisActorProtocol.DisplayMessages.INSTANCE);
+        return FutureConverters.toJava(ask(redisSupervisorActor, RedisActorProtocol.DisplayMessages.INSTANCE, 10000))
                 .thenApply(response -> ok(response.toString()));
     }
 
     public CompletionStage<Result> publishMessage(String message) {
-        final ActorRef publisherActor = getPublisherActor();
-        Logger.info("Calling RedisPublisherActor {} with message {}", publisherActor, message);
-        return FutureConverters.toJava(ask(publisherActor, new RedisActorProtocol.PublishMessage(message), 10000))
+        Logger.info("Calling RedisPublisherActor {} with message {}", redisSupervisorActor, message);
+        return FutureConverters.toJava(ask(redisSupervisorActor, new RedisActorProtocol.PublishMessage(message), 10000))
                 .thenApply(response -> ok(response.toString()));
     }
 
@@ -114,7 +83,7 @@ public class RedisController extends Controller {
         actorSystem.scheduler().schedule(
                 Duration.create(0, timeUnit),
                 Duration.create(interval, timeUnit),
-                (Runnable) () -> getPublisherActor().tell(
+                (Runnable) () -> redisSupervisorActor.tell(
                         new RedisActorProtocol.PublishMessage("count" + counter.nextCount()), ActorRef.noSender()),
                 exec
         );
