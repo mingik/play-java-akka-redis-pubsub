@@ -1,15 +1,21 @@
-About
+#About
 =====
 
-This webapplication uses Play framework, Akka and Redis pubsub feature.
+Play framework (Java) + Akka + Redis PubSub showcase.
 
-RedisController creates RedisSupervisorActor instance (that in turn creates 10 RedisPublisherActors 
-and 10 RedisSubscriberActors) and on each GET request to /publish endpoint it asks RedisSupervisorActor 
-to publish the value of 'message' URL parameter to Redis channel (configured in application.conf). 
-RedisSupervisorActor delegates this request to RedisPublisherActor instance chosen via round robin (it 
-uses RoundRobin logic in Akka router). Also on each GET request to /display endpoint it asks 
-RedisSupervisorActor to display all messages published to Redis channel so far. RedisSupervisorActor 
-delegates this request to RedisSubscriberActor instance (round robin is used here as well).
+## Overview: Each GET request to /publish?message=hello endpoint will publish provided message value to 
+Redis channel (configured in conf/application.conf). Each GET request to /display endpoint will display 
+all messages received so far from the same Redis channel. Each GET request to /counter endpoint will 
+start publishing messages to the same Redis channel every 10 seconds.
+
+## Details: RedisController creates RedisSupervisorActor instance, that in turn creates 10 RedisPublisherActor 
+and 10 RedisSubscriberActor instances. On each GET request to /publish endpoint RedisController executes a method 
+that asks RedisSupervisorActor to publish the value of 'message' URL parameter to Redis channel. RedisSupervisorActor 
+delegates this request to RedisPublisherActor instance chosen via round robin (it uses RoundRobin logic in Akka router). 
+Also on each GET request to /display endpoint it asks RedisSupervisorActor to display all messages published to Redis 
+channel so far. RedisSupervisorActor delegates this request to RedisSubscriberActor instance (round robin is used here as well).
+
+## Branches: 
 
 Branch 'master' contains implementation where each instance of RedisSubscriberActor holds  
 RedisListener (i.e. Redis subscriber) instance internally (note that it blocks additional 
@@ -27,7 +33,7 @@ are created on this branch, but it can be modifier to whatever number you want).
 
 =========================================================================================================
 
-Usage
+#Usage
 =====
 
 1. Install and run Redis (redis-servier).
@@ -45,14 +51,14 @@ and the same messages were consumed by RedisSubscriberActor and displayed on the
 You can also navigate to [http://localhost:9000/counter] and then to [http://localhost:9000/display] and start refreshing 
 the page every 10 seconds. You should see messages "count0", "count1", "count2" appear on the page after every 10 sec refresh.
 
-Details
+#Details
 =======
 
 This file will be packaged with your application when using `activator dist`.
 
 There are several demonstration files available in this template.
 
-Controllers
+#Controllers
 ===========
 - RedisController.java:
 
@@ -71,7 +77,7 @@ Controllers
   Shows how to inject a component into a controller and use the component when
   handling requests.
 
-Components
+#Components
 ==========
 
 - Module.java:
@@ -87,7 +93,7 @@ Components
   An example of a component that starts when the application starts and stops
   when the application stops.
 
-Filters
+#Filters
 =======
 
 - Filters.java:
@@ -98,7 +104,7 @@ Filters
 
   A simple filter that adds a header to every response.
   
-Actors
+#Actors
 ======
 - RedisSupervisorActor.java:
   
@@ -113,13 +119,13 @@ Actors
   Akka Actor that receives messages from its own RedisListener and stores them internally. 
   It also replies with all messages received so far. 
   
-Services
+#Services
 ========
 
 - RedisListener.java:
   Subscriber to Redis channel. It forwards published messages received from Redis channel to one RedisSubscriberActor (in branch 'master') or to all RedisSubscriberActor instances (in branch 'onesubscriber).
   
-Tests
+#Tests
 =====
 
 - ApplicationTest.java:
