@@ -1,5 +1,3 @@
-#About
-
 Play framework (Java) + Akka + Redis PubSub showcase.
 
 ## Overview: 
