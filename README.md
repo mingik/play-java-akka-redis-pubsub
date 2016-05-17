@@ -3,7 +3,13 @@ About
 
 This webapplication uses Play framework, Akka and Redis pubsub feature.
 
-RedisController creates RedisSupervisorActor instance (that in turn creates 10 RedisPublisherActors and 10 RedisSubscriberActors) and on each GET request to /publish endpoint it asks RedisSupervisorActor to publish the value of 'message' URL parameter to Redis channel (configured in application.conf). RedisSupervisorActor delegates this request to RedisPublisherActor instance chosen via round robin (it uses RoundRobin logic in Akka router). Also on each GET request to /display endpoint it asks RedisSupervisorActor to display all messages published to Redis channel so far. RedisSupervisorActor delegates this request to RedisSubscriberActor instance (round robin is used here as well).
+RedisController creates RedisSupervisorActor instance (that in turn creates 10 RedisPublisherActors 
+and 10 RedisSubscriberActors) and on each GET request to /publish endpoint it asks RedisSupervisorActor 
+to publish the value of 'message' URL parameter to Redis channel (configured in application.conf). 
+RedisSupervisorActor delegates this request to RedisPublisherActor instance chosen via round robin (it 
+uses RoundRobin logic in Akka router). Also on each GET request to /display endpoint it asks 
+RedisSupervisorActor to display all messages published to Redis channel so far. RedisSupervisorActor 
+delegates this request to RedisSubscriberActor instance (round robin is used here as well).
 
 Branch 'master' contains implementation where each instance of RedisSubscriberActor holds  
 RedisListener (i.e. Redis subscriber) instance internally (note that it blocks additional 
