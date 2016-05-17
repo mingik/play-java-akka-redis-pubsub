@@ -3,12 +3,14 @@
 
 Play framework (Java) + Akka + Redis PubSub showcase.
 
-## Overview: Each GET request to /publish?message=hello endpoint will publish provided message value to 
+## Overview: 
+Each GET request to /publish?message=hello endpoint will publish provided message value to 
 Redis channel (configured in conf/application.conf). Each GET request to /display endpoint will display 
 all messages received so far from the same Redis channel. Each GET request to /counter endpoint will 
 start publishing messages to the same Redis channel every 10 seconds.
 
-## Details: RedisController creates RedisSupervisorActor instance, that in turn creates 10 RedisPublisherActor 
+## Details: 
+RedisController creates RedisSupervisorActor instance, that in turn creates 10 RedisPublisherActor 
 and 10 RedisSubscriberActor instances. On each GET request to /publish endpoint RedisController executes a method 
 that asks RedisSupervisorActor to publish the value of 'message' URL parameter to Redis channel. RedisSupervisorActor 
 delegates this request to RedisPublisherActor instance chosen via round robin (it uses RoundRobin logic in Akka router). 
