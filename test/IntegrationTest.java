@@ -1,17 +1,17 @@
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import messages.RedisActorProtocol;
-import org.junit.*;
-
+import org.junit.Test;
 import play.Application;
-import play.mvc.*;
-import play.test.*;
+import play.libs.Json;
+import play.libs.ws.WSClient;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static play.test.Helpers.*;
-import static org.junit.Assert.*;
-
-import static org.fluentlenium.core.filter.FilterConstructor.*;
 
 public class IntegrationTest {
 
@@ -46,8 +46,19 @@ public class IntegrationTest {
             browser.goTo("http://localhost:3333/display");
             assertTrue(browser.pageSource().contains("Messages seen so far: "));
 
-            browser.goTo("http://localhost:3333/publish?message=hello");
-            assertTrue(browser.pageSource().contains(RedisActorProtocol.PublishAcknowledged.class.getCanonicalName()));
+            WSClient ws = play.libs.ws.WS.newClient(3333);
+            try {
+                ObjectNode postPayload = Json.newObject();
+                postPayload.put("message", "hello");
+                String responseBody = ws.url("http://localhost:3333/publish")
+                        .post(postPayload)
+                        .toCompletableFuture()
+                        .get(1000, TimeUnit.SECONDS)
+                        .getBody();
+                assertTrue(responseBody.contains(RedisActorProtocol.PublishAcknowledged.class.getCanonicalName()));
+            } catch (Exception e) {
+                fail("Shouldn't throw any exceptions, but got: " + e.getMessage());
+            }
 
             browser.goTo("http://localhost:3333/display");
             assertTrue(browser.pageSource().contains("Messages seen so far: hello"));

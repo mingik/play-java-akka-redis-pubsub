@@ -59,7 +59,8 @@ public class RedisController extends Controller {
                 .thenApply(response -> ok(response.toString()));
     }
 
-    public CompletionStage<Result> publishMessage(String message) {
+    public CompletionStage<Result> publishMessage() {
+        String message = request().body().asJson().get("message").asText();
         Logger.info("Calling RedisPublisherActor {} with message {}", redisSupervisorActor, message);
         return FutureConverters.toJava(ask(redisSupervisorActor, new RedisActorProtocol.PublishMessage(message), 10000))
                 .thenApply(response -> ok(response.toString()));
